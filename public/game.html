@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Topla Elma Oyunu</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: linear-gradient(to bottom, #1e3c72, #2a5298);
+        font-family: Arial, sans-serif;
+      }
+
+      #game-container {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      #score-board,
+      #high-score-board,
+      #timer {
+        position: absolute;
+        top: 10px;
+        font-size: 24px;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+      }
+
+      #score-board {
+        left: 10px;
+      }
+
+      #high-score-board {
+        right: 10px;
+      }
+
+      #timer {
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      #game-canvas {
+        border-radius: 15px;
+      }
+
+      #buttons {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+      }
+
+      button {
+        font-size: 16px;
+        margin: 5px;
+        padding: 10px 20px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        background-color: #fff;
+        color: #333;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      button:hover {
+        background-color: #eee;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="score-board">Puan: 0</div>
+      <div id="high-score-board">Yüksek Skor: 0</div>
+      <div id="timer">Süre: 60</div>
+      <canvas id="game-canvas"></canvas>
+      <div id="buttons">
+        <button id="new-game-button">Başla</button>
+        <button id="quit-button">Çık</button>
+      </div>
+    </div>
+    <script>
+      const canvas = document.getElementById("game-canvas");
+      const ctx = canvas.getContext("2d");
+      const scoreBoard = document.getElementById("score-board");
+      const highScoreBoard = document.getElementById("high-score-board");
+      const timerDisplay = document.getElementById("timer");
+      const newGameButton = document.getElementById("new-game-button");
+      const quitButton = document.getElementById("quit-button");
+
+      canvas.width = 800;
+      canvas.height = 600;
+
+      let score = 0;
+      let highScore = 0;
+      let timeRemaining = 60;
+      let gameInterval;
+      let gameActive = false;
+      const appleImage = new Image();
+      appleImage.src = "https://cdn-icons-png.flaticon.com/512/415/415682.png";
+
+      class Apple {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.radius = 40;
+          this.speed = 2 + Math.random() * 3;
+        }
+
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+          ctx.shadowBlur = 10;
+          ctx.closePath();
+          ctx.drawImage(
+            appleImage,
+            this.x - this.radius,
+            this.y - this.radius,
+            this.radius * 2,
+            this.radius * 2
+          );
+        }
+
+        update() {
+          this.y += this.speed;
+          if (this.y > canvas.height + this.radius) {
+            this.y = -this.radius;
+            this.x =
+              Math.random() * (canvas.width - this.radius * 2) + this.radius;
+          }
+        }
+      }
+
+      let apples = [];
+      function generateApple() {
+        const x = Math.random() * (canvas.width - 80) + 40;
+        const y = Math.random() * (canvas.height - 80) + 40;
+        const apple = new Apple(x, y);
+        apples.push(apple);
+      }
+
+      function updateScore() {
+        scoreBoard.textContent = "Puan: " + score;
+      }
+
+      function updateHighScore() {
+        highScoreBoard.textContent = "Yüksek Skor: " + highScore;
+      }
+
+      function updateTimer() {
+        timerDisplay.textContent = "Süre: " + timeRemaining;
+      }
+
+      function startGame() {
+        if (gameActive) return;
+
+        gameActive = true;
+        score = 0;
+        timeRemaining = 60;
+        apples = [];
+        updateScore();
+        updateTimer();
+
+        gameInterval = setInterval(() => {
+          if (timeRemaining > 0) {
+            timeRemaining--;
+            updateTimer();
+          } else {
+            endGame();
+          }
+        }, 1000);
+
+        gameLoop();
+      }
+
+      function endGame() {
+        clearInterval(gameInterval);
+        gameActive = false;
+        if (score > highScore) {
+          highScore = score;
+          updateHighScore();
+          saveHighScore(highScore);
+        }
+        alert("Oyun Bitti! Skorunuz: " + score);
+      }
+
+      function saveHighScore(score) {
+        fetch("/save-highscore", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ highScore: score }),
+        });
+      }
+
+      function loadHighScore() {
+        fetch("/load-highscore")
+          .then((response) => response.json())
+          .then((data) => {
+            highScore = data.highScore;
+            updateHighScore();
+          });
+      }
+
+      canvas.addEventListener("click", (e) => {
+        if (!gameActive) return;
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        for (let i = 0; i < apples.length; i++) {
+          const apple = apples[i];
+          const dist = Math.hypot(apple.x - mouseX, apple.y - mouseY);
+
+          if (dist < apple.radius) {
+            apples.splice(i, 1);
+            score += 1;
+            updateScore();
+            break;
+          }
+        }
+      });
+
+      function gameLoop() {
+        if (!gameActive) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (apples.length < 5) {
+          generateApple();
+        }
+
+        apples.forEach((apple) => {
+          apple.update();
+          apple.draw();
+        });
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      newGameButton.addEventListener("click", () => {
+        startGame();
+      });
+
+      quitButton.addEventListener("click", () => {
+        window.location.href = "index.html"; // Buraya çıkış yapmak istediğiniz URL'yi ekleyin
+      });
+
+      appleImage.onload = () => {
+        loadHighScore();
+      };
+    </script>
+  </body>
+</html>
