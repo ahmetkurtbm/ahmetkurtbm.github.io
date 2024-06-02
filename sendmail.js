@@ -8,7 +8,7 @@ const port = 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.post("/send-email", (req, res) => {
+app.post("https://ahmetkurtbm.github.io/send-email", (req, res) => {
   const from = req.body.from;
   const content = req.body.content;
 
