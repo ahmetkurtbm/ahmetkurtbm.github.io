@@ -219,7 +219,7 @@
     <div id="contact">
       <h2>Benimle İletişime Geçin</h2>
       <div id="contact-form">
-        <form method="POST" action="https://formspree.io/email@email.com">
+        <form action="/send-email" method="POST">
           <input
             type="hidden"
             name="_subject"
@@ -227,11 +227,17 @@
           />
           <input
             type="email"
-            name="_replyto"
+            id="from"
+            name="from"
             placeholder="email adresiniz"
             required
           />
-          <textarea name="message" placeholder="mesajınız" required></textarea>
+          <textarea
+            id="content"
+            name="content"
+            placeholder="mesajınız"
+            required
+          ></textarea>
           <button type="submit">Gönder</button>
         </form>
       </div>
